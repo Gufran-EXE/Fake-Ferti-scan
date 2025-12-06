@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useLanguage } from "@/lib/language-context"
 import { translations } from "@/lib/translations"
@@ -7,6 +8,14 @@ import { translations } from "@/lib/translations"
 export default function Footer() {
   const { language, setLanguage } = useLanguage()
   const t = translations[language].footer
+  const [windowWidth, setWindowWidth] = useState(1200)
+
+  useEffect(() => {
+    setWindowWidth(window.innerWidth)
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -30,7 +39,7 @@ export default function Footer() {
           key={i}
           className="absolute text-3xl opacity-20 pointer-events-none"
           animate={{
-            x: [-100, window.innerWidth + 100],
+            x: [-100, windowWidth + 100],
             y: [Math.random() * 100, Math.random() * 100],
             rotate: [0, 360],
           }}
