@@ -46,18 +46,18 @@ export default function Hero() {
             className="absolute w-1 h-1 rounded-full"
             style={{
               backgroundColor: isDark ? "rgba(200, 230, 201, 0.4)" : "rgba(27, 94, 32, 0.3)",
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${(i * 37) % 100}%`,
+              top: `${(i * 23) % 100}%`,
             }}
             animate={{
-              x: [0, Math.random() * 100 - 50],
-              y: [0, Math.random() * -200],
+              x: [0, (i * 13) % 100 - 50],
+              y: [0, -((i * 17) % 200)],
               opacity: [0.5, 0],
             }}
             transition={{
-              duration: Math.random() * 3 + 4,
+              duration: (i % 3) + 4,
               repeat: Number.POSITIVE_INFINITY,
-              repeatDelay: Math.random() * 2,
+              repeatDelay: (i % 2),
             }}
           />
         ))}

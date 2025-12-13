@@ -31,18 +31,18 @@ export default function AuthPage() {
             key={i}
             className="absolute rounded-full mix-blend-multiply filter blur-xl opacity-20"
             style={{
-              width: Math.random() * 200 + 100,
-              height: Math.random() * 200 + 100,
+              width: (i * 20) % 200 + 100,
+              height: (i * 20) % 200 + 100,
               backgroundColor: i % 3 === 0 ? "#C8E6C9" : i % 3 === 1 ? "#FDD835" : "#89F7FE",
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${(i * 11) % 100}%`,
+              top: `${(i * 17) % 100}%`,
             }}
             animate={{
-              x: [0, Math.random() * 50 - 25],
-              y: [0, Math.random() * 50 - 25],
+              x: [0, (i * 5) % 50 - 25],
+              y: [0, (i * 7) % 50 - 25],
             }}
             transition={{
-              duration: Math.random() * 8 + 10,
+              duration: (i % 8) + 10,
               repeat: Number.POSITIVE_INFINITY,
               repeatType: "reverse",
             }}

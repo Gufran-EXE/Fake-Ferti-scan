@@ -94,7 +94,7 @@ export default function AdminDashboard() {
       createdAt: `2024-11-${String((5 - Math.floor(i / 3)) % 30).padStart(2, "0")} ${String(8 + (i % 8)).padStart(2, "0")}:${String((i * 7) % 60).padStart(2, "0")}`,
       description: "Report description",
       images: ["/fertilizer-application.png"],
-      location: { lat: 20 + Math.random() * 15, lng: 72 + Math.random() * 20 },
+      location: { lat: 20 + (i * 0.5), lng: 72 + (i * 0.8) },
     })),
   ]
 

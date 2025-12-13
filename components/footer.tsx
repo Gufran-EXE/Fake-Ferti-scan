@@ -40,7 +40,7 @@ export default function Footer() {
           className="absolute text-3xl opacity-20 pointer-events-none"
           animate={{
             x: [-100, windowWidth + 100],
-            y: [Math.random() * 100, Math.random() * 100],
+            y: [(i * 17) % 100, (i * 23) % 100],
             rotate: [0, 360],
           }}
           transition={{
@@ -50,7 +50,7 @@ export default function Footer() {
           }}
           style={{
             left: `${i * 15}%`,
-            top: `${Math.random() * 50}%`,
+            top: `${(i * 13) % 50}%`,
           }}
         >
           🍃
