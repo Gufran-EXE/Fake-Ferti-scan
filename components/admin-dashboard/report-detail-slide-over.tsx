@@ -209,86 +209,86 @@ export default function ReportDetailSlideOver({
                 </motion.button>
               </motion.div>
             </div>
-
-            {/* Confirm Modal */}
-            <AnimatePresence>
-              {showConfirmModal && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
-                  onClick={() => setShowConfirmModal(false)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.95, opacity: 0 }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-slate-900 border border-emerald-500/30 rounded-lg p-6 max-w-sm"
-                  >
-                    <h3 className="text-lg font-bold text-white mb-2">Confirm Action</h3>
-                    <p className="text-white/60 mb-6">
-                      Are you sure you want to {action} this report? This action cannot be undone.
-                    </p>
-                    <div className="flex gap-3">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowConfirmModal(false)}
-                        className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={confirmAction}
-                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
-                      >
-                        Confirm
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Lightbox */}
-            <AnimatePresence>
-              {showLightbox && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setShowLightbox(false)}
-                  className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-                >
-                  <motion.div
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0.9 }}
-                    className="relative max-w-4xl max-h-screen"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <img
-                      src={report.images[selectedImage] || "/placeholder.svg"}
-                      alt="Full resolution"
-                      className="max-w-full max-h-screen object-contain"
-                    />
-                    <motion.button
-                      whileHover={{ scale: 1.1, rotate: 90 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowLightbox(false)}
-                      className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-lg text-white transition-colors"
-                    >
-                      <X className="w-6 h-6" />
-                    </motion.button>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
+
+          {/* Confirm Modal - Outside slide-over container */}
+          <AnimatePresence>
+            {showConfirmModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]"
+                onClick={() => setShowConfirmModal(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-slate-900 border border-emerald-500/30 rounded-lg p-6 max-w-sm mx-4"
+                >
+                  <h3 className="text-lg font-bold text-white mb-2">Confirm Action</h3>
+                  <p className="text-white/60 mb-6">
+                    Are you sure you want to {action} this report? This action cannot be undone.
+                  </p>
+                  <div className="flex gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowConfirmModal(false)}
+                      className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={confirmAction}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
+                    >
+                      Confirm
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Lightbox - Outside slide-over container */}
+          <AnimatePresence>
+            {showLightbox && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLightbox(false)}
+                className="fixed inset-0 bg-black/90 flex items-center justify-center z-[70]"
+              >
+                <motion.div
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0.9 }}
+                  className="relative max-w-4xl max-h-screen"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <img
+                    src={report.images[selectedImage] || "/placeholder.svg"}
+                    alt="Full resolution"
+                    className="max-w-full max-h-screen object-contain"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowLightbox(false)}
+                    className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-lg text-white transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </motion.button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>

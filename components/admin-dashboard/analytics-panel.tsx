@@ -64,8 +64,10 @@ export default function AnalyticsPanel({ reports }: { reports: any[] }) {
                 backgroundColor: "#0f172a",
                 border: "1px solid #10b981",
                 borderRadius: "8px",
-                color: "#fff",
+                color: "#ffffff",
               }}
+              labelStyle={{ color: "#ffffff" }}
+              itemStyle={{ color: "#ffffff" }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -97,8 +99,10 @@ export default function AnalyticsPanel({ reports }: { reports: any[] }) {
                 backgroundColor: "#0f172a",
                 border: "1px solid #10b981",
                 borderRadius: "8px",
-                color: "#fff",
+                color: "#ffffff",
               }}
+              labelStyle={{ color: "#ffffff" }}
+              itemStyle={{ color: "#ffffff" }}
             />
             <Bar dataKey="reports" fill="#10b981" radius={[8, 8, 0, 0]} />
           </BarChart>
