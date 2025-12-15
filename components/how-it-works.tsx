@@ -71,7 +71,20 @@ export default function HowItWorks() {
                 )}
 
                 {/* Step card with enhanced styling */}
-                <div className="bg-gradient-to-br from-emerald-50 to-lime-50 dark:from-emerald-900/30 dark:to-slate-800/30 rounded-2xl p-6 border border-emerald-200 dark:border-emerald-800/40 relative z-10 h-full hover:shadow-lg transition-shadow">
+                <motion.div 
+                  className="bg-gradient-to-br from-emerald-50 to-lime-50 dark:from-emerald-900/30 dark:to-slate-800/30 rounded-2xl p-6 border border-emerald-200 dark:border-emerald-800/40 relative z-10 h-full cursor-pointer"
+                  whileHover={{ 
+                    y: -8, 
+                    scale: 1.02,
+                    boxShadow: "0 20px 40px rgba(16, 185, 129, 0.15)",
+                    borderColor: "rgba(16, 185, 129, 0.3)"
+                  }}
+                  transition={{ 
+                    type: "spring", 
+                    stiffness: 300, 
+                    damping: 20 
+                  }}
+                >
                   <motion.div
                     className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-4 text-white"
                     animate={{ scale: [1, 1.1, 1] }}
@@ -92,7 +105,7 @@ export default function HowItWorks() {
                       {step.icon}
                     </motion.span>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           ))}
