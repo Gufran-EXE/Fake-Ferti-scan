@@ -14,17 +14,25 @@ export default function Hero() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isDark, setIsDark] = useState(false)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(1200)
 
   useEffect(() => {
     const isDarkMode = document.documentElement.classList.contains("dark")
     setIsDark(isDarkMode)
+    
+    setWindowWidth(window.innerWidth)
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
 
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY })
     }
 
     window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener('resize', handleResize)
+    }
   }, [])
 
   return (
