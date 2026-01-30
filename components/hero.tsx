@@ -136,13 +136,7 @@ export default function Hero() {
           className="mt-16"
         >
           <div className="relative w-full max-w-2xl mx-auto h-80 bg-gradient-to-b from-emerald-200/40 dark:from-emerald-900/30 to-transparent rounded-3xl border border-emerald-200 dark:border-emerald-800/40 overflow-hidden backdrop-blur-sm">
-            <motion.div
-              animate={{ y: [-20, 20] }}
-              transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
-              className="absolute inset-0 flex items-center justify-center text-6xl"
-            >
-              🌾
-            </motion.div>
+            {/* Icon removed - ready for carousel */}
           </div>
         </motion.div>
       </div>

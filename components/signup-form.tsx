@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Check } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 interface SignUpFormProps {
   isDark: boolean
@@ -14,7 +15,7 @@ interface SignUpFormProps {
 export default function SignUpForm({ isDark, onSuccess }: SignUpFormProps) {
   const [formData, setFormData] = useState({
     name: "",
-    phone: "",
+    email: "",
     location: "",
     farmSize: "",
   })
@@ -26,20 +27,46 @@ export default function SignUpForm({ isDark, onSuccess }: SignUpFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setTimeout(() => {
+    
+    try {
+      // Sign up user with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: 'temp-password-' + Date.now(), // Temporary password since we're using OTP
+        options: {
+          data: {
+            name: formData.name,
+            location: formData.location,
+            farmSize: formData.farmSize,
+          }
+        }
+      })
+      
+      if (error) {
+        alert(`Error: ${error.message}`)
+        setIsSubmitting(false)
+        return
+      }
+      
       setIsSubmitting(false)
       setSuccess(true)
+      
       setTimeout(() => {
         if (onSuccess) {
           onSuccess()
         } else {
-          alert("Account created successfully!")
+          alert("Account created successfully! Please check your email to verify your account.")
         }
       }, 1500)
-    }, 1500)
+      
+    } catch (error) {
+      console.error('Error creating account:', error)
+      alert("Failed to create account. Please try again.")
+      setIsSubmitting(false)
+    }
   }
 
   if (success) {
@@ -79,15 +106,15 @@ export default function SignUpForm({ isDark, onSuccess }: SignUpFormProps) {
           />
         </motion.div>
 
-        {/* Phone */}
+        {/* Email */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Phone Number</label>
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">Email Address</label>
           <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
+            type="email"
+            name="email"
+            value={formData.email}
             onChange={handleChange}
-            placeholder="10-digit phone number"
+            placeholder="your.email@example.com"
             required
             className="w-full px-4 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 dark:focus:border-lime-500 transition-all"
           />
