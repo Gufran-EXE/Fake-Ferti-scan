@@ -88,7 +88,7 @@ export default function AdminLoginForm() {
     >
       <div className="text-center mb-2">
         <h2 className="text-2xl font-bold text-white">Sign In</h2>
-        <p className="text-sm text-white/60 mt-1">Admin Access Required</p>
+        <p className="text-sm text-white/60 mt-1">Government Access Required</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -244,13 +244,13 @@ export default function AdminLoginForm() {
         >
           Forgot password?
         </a>
-        <div className="text-xs text-white/40">Admin Portal v1.0</div>
+        <div className="text-xs text-white/40">Government Portal v1.0</div>
       </div>
 
       {/* Mock credentials hint */}
       <div className="pt-4 border-t border-emerald-500/10 space-y-1">
         <p className="text-xs text-emerald-300 font-mono">Demo: admin@fertilizer.gov / admin123</p>
-        <p className="text-xs text-white/60">For production, use official credentials and mandatory 2FA.</p>
+        <p className="text-xs text-white/60">For production, use official government credentials with mandatory 2FA.</p>
       </div>
     </motion.div>
   )

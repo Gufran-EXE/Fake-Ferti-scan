@@ -1,0 +1,46 @@
+
+================================================================================
+         FAKE FERTILIZER DETECTION SYSTEM - COMPANY REGISTRATION
+================================================================================
+Generated On: 4/16/2026, 7:46:06 PM
+
+--------------------------------------------------------------------------------
+COMPANY INFORMATION
+--------------------------------------------------------------------------------
+Company Name        : ABC
+Registration Number : 123456
+License Number      : 12345
+Established Year    : 2020
+Owner / Director    : Sudarshan
+GST Number          : ABC123
+Website             : 
+
+--------------------------------------------------------------------------------
+CONTACT DETAILS
+--------------------------------------------------------------------------------
+Email               : gufran2098@gmail.com
+Phone               : 9373277321
+Address             : Jadhav sankul ambad link road satpur nashik 422010
+City                : Nashik
+State               : Maharashtra
+Pincode             : 422010
+
+--------------------------------------------------------------------------------
+PRODUCTS (1 Total)
+--------------------------------------------------------------------------------
+
+Product #1
+  Product Name        : ParleG
+  Product Type        : Foods
+  Composition         : 10:10:10
+  Registration ID     : 123
+  Batch Number        : 1
+  Manufacturing Date  : 
+  Expiry Date         : 
+  Price Per KG        : ₹3
+  Packaging Sizes     : 1
+  Status              : VERIFIED
+
+================================================================================
+                          END OF RECORD
+================================================================================

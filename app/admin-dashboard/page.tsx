@@ -1,174 +1,864 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import AdminHeader from "@/components/admin-dashboard/admin-header"
-import ReportsTable from "@/components/admin-dashboard/reports-table"
-import AnalyticsPanel from "@/components/admin-dashboard/analytics-panel"
-import VerificationQueue from "@/components/admin-dashboard/verification-queue"
-import ReportDetailSlideOver from "@/components/admin-dashboard/report-detail-slide-over"
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/navigation"
+import {
+  Clock, CheckCircle, XCircle, BarChart3,
+  Bell, Search, LogOut, Building2, Package,
+  RefreshCw, Eye, ChevronDown, ChevronUp,
+  X, MapPin, Mail, Phone, Globe, Hash, FileText, User, Calendar
+} from "lucide-react"
 
-interface Report {
-  id: string
-  product: string
-  reporter: string
-  region: string
-  status: string
-  createdAt: string
-  description?: string
-  images?: string[]
-  location?: { lat: number; lng: number }
+interface Product {
+  _id: string
+  productName: string
+  productType: string
+  composition: string
+  batchNumber: string
+  manufacturingDate: string
+  expiryDate: string
+  netWeight: string
+  pricePerKg: string
+  targetCrops: string
+  storageConditions: string
+  companyId: string
+  companyName: string
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  qrRequested: boolean
+  submittedAt: string
+  rejectionReason?: string
+  productId?: string
+  hash?: string
 }
 
-export default function AdminDashboard() {
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null)
-  const [showSlideOver, setShowSlideOver] = useState(false)
+type TabType = "pending" | "approved" | "rejected" | "analytics"
 
-  const mockReports = [
-    {
-      id: "RPT-001",
-      product: "GreenGrow Fertilizer",
-      reporter: "Raj Patel",
-      region: "Maharashtra",
-      status: "open",
-      createdAt: "2024-11-10 14:32",
-      description: "Product packaging appears counterfeit",
-      images: ["/fertilizer-package.jpg"],
-      location: { lat: 19.7515, lng: 75.7139 },
-    },
-    {
-      id: "RPT-002",
-      product: "NutriMax NPK",
-      reporter: "Amrita Singh",
-      region: "Punjab",
-      status: "triaged",
-      createdAt: "2024-11-09 09:15",
-      description: "QR code verification failed",
-      images: ["/fertilizer-packaging.jpg"],
-      location: { lat: 31.1471, lng: 75.3412 },
-    },
-    {
-      id: "RPT-003",
-      product: "EcoFarm Organic",
-      reporter: "Vikram Kumar",
-      region: "Karnataka",
-      status: "verified",
-      createdAt: "2024-11-08 16:45",
-      description: "Authentic product confirmed",
-      images: ["/organic-fertilizer.jpg"],
-      location: { lat: 15.3173, lng: 75.7139 },
-    },
-    {
-      id: "RPT-004",
-      product: "MegaYield Premium",
-      reporter: "Harjit Kaur",
-      region: "Haryana",
-      status: "open",
-      createdAt: "2024-11-07 11:22",
-      description: "Suspicious batch numbers detected",
-      images: ["/fertilizer-bag.jpg"],
-      location: { lat: 29.0588, lng: 77.0745 },
-    },
-    {
-      id: "RPT-005",
-      product: "FarmPro Elite",
-      reporter: "Meera Nair",
-      region: "Tamil Nadu",
-      status: "closed",
-      createdAt: "2024-11-06 13:50",
-      description: "False alarm - authentic batch",
-      images: ["/farm-product.jpg"],
-      location: { lat: 11.1271, lng: 78.6569 },
-    },
-  ]
+export default function GovernmentDashboard() {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<TabType>("pending")
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [rejectReason, setRejectReason] = useState("")
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [companyModal, setCompanyModal] = useState<any | null>(null)
+  const [companyLoading, setCompanyLoading] = useState(false)
+  const [notifyModal, setNotifyModal] = useState<{ companyId: string; companyName: string; productId?: string; productName?: string } | null>(null)
+  const [notifyMessage, setNotifyMessage] = useState("")
+  const [notifySending, setNotifySending] = useState(false)
+  const [notifySuccess, setNotifySuccess] = useState(false)
 
-  // Generate more mock data for 20 total reports
-  const allReports = [
-    ...mockReports,
-    ...Array.from({ length: 15 }, (_, i) => ({
-      id: `RPT-${String(i + 6).padStart(3, "0")}`,
-      product: ["SoilMax", "CropBoost", "YieldMax", "GreenPlus", "FertilPro"][i % 5],
-      reporter: ["Farmer " + (i + 1)][0],
-      region: ["UP", "MP", "Gujarat", "Rajasthan", "AP", "Bihar"][i % 6],
-      status: ["open", "triaged", "verified", "closed"][i % 4],
-      createdAt: `2024-11-${String((5 - Math.floor(i / 3)) % 30).padStart(2, "0")} ${String(8 + (i % 8)).padStart(2, "0")}:${String((i * 7) % 60).padStart(2, "0")}`,
-      description: "Report description",
-      images: ["/fertilizer-application.png"],
-      location: { lat: 20 + (i * 0.5), lng: 72 + (i * 0.8) },
-    })),
+  const fetchCompanyInfo = async (companyId: string) => {
+    setCompanyLoading(true)
+    try {
+      const res = await fetch(`/api/gov/company?companyId=${companyId}`)
+      const data = await res.json()
+      if (data.success) setCompanyModal(data.company)
+    } catch (err) {
+      console.error("Failed to fetch company:", err)
+    } finally {
+      setCompanyLoading(false)
+    }
+  }
+
+  const handleSendNotification = async () => {
+    if (!notifyMessage.trim() || !notifyModal) return
+    setNotifySending(true)
+    try {
+      const res = await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: notifyModal.companyId,
+          productId: notifyModal.productId,
+          productName: notifyModal.productName,
+          message: notifyMessage,
+          sentBy: "Government Portal",
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNotifyMessage("")
+        setNotifyModal(null)
+        setNotifySuccess(true)
+        setTimeout(() => setNotifySuccess(false), 3000)
+      }
+    } catch (err) {
+      alert("Failed to send notification")
+    } finally {
+      setNotifySending(false)
+    }
+  }
+
+  const handleApprove = async (productId: string) => {
+    setActionLoading(productId)
+    try {
+      const res = await fetch("/api/gov/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        await fetchProducts("PENDING")
+      } else {
+        alert(`Error: ${data.message}`)
+      }
+    } catch (err) {
+      alert("Failed to approve. Please try again.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleReject = async (productId: string) => {
+    if (!rejectReason.trim()) {
+      alert("Please enter a rejection reason")
+      return
+    }
+    setActionLoading(productId)
+    try {
+      const res = await fetch("/api/gov/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, rejectionReason: rejectReason }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setRejectingId(null)
+        setRejectReason("")
+        await fetchProducts("PENDING")
+      } else {
+        alert(`Error: ${data.message}`)
+      }
+    } catch (err) {
+      alert("Failed to reject. Please try again.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const fetchProducts = async (status?: string) => {
+    setLoading(true)
+    try {
+      const url = status ? `/api/gov/products?status=${status}` : "/api/gov/products"
+      const res = await fetch(url)
+      const data = await res.json()
+      if (data.success) setProducts(data.products)
+    } catch (err) {
+      console.error("Failed to fetch:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const statusMap: Record<TabType, string | undefined> = {
+      pending: "PENDING",
+      approved: "APPROVED",
+      rejected: "REJECTED",
+      analytics: undefined,
+    }
+    fetchProducts(statusMap[activeTab])
+  }, [activeTab])
+
+  const filtered = products.filter(p =>
+    p.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.companyId?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const tabs = [
+    { id: "pending", label: "Pending Approvals", icon: Clock, color: "text-yellow-400", border: "border-yellow-500" },
+    { id: "approved", label: "Approved Products", icon: CheckCircle, color: "text-emerald-400", border: "border-emerald-500" },
+    { id: "rejected", label: "Rejected Products", icon: XCircle, color: "text-red-400", border: "border-red-500" },
+    { id: "analytics", label: "Analytics", icon: BarChart3, color: "text-blue-400", border: "border-blue-500" },
   ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Grid Background */}
-      <div className="fixed inset-0 opacity-5 pointer-events-none">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `
-            linear-gradient(0deg, transparent 24%, rgba(0, 255, 148, .05) 25%, rgba(0, 255, 148, .05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 148, .05) 75%, rgba(0, 255, 148, .05) 76%, transparent 77%, transparent),
-            linear-gradient(90deg, transparent 24%, rgba(0, 255, 148, .05) 25%, rgba(0, 255, 148, .05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 148, .05) 75%, rgba(0, 255, 148, .05) 76%, transparent 77%, transparent)
+      <div className="fixed inset-0 opacity-5 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(0deg, transparent 24%, rgba(0,255,148,.05) 25%, rgba(0,255,148,.05) 26%, transparent 27%, transparent 74%, rgba(0,255,148,.05) 75%, rgba(0,255,148,.05) 76%, transparent 77%, transparent),
+            linear-gradient(90deg, transparent 24%, rgba(0,255,148,.05) 25%, rgba(0,255,148,.05) 26%, transparent 27%, transparent 74%, rgba(0,255,148,.05) 75%, rgba(0,255,148,.05) 76%, transparent 77%, transparent)
           `,
-            backgroundSize: "50px 50px",
-          }}
-        />
-      </div>
+          backgroundSize: "50px 50px",
+        }}
+      />
 
-      <div className="relative z-10">
-        <AdminHeader />
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-emerald-500/20"
+      >
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => router.push("/")}
+          >
+            <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">🏛️</span>
+            </div>
+            <span className="font-semibold text-white hidden sm:inline">Government Portal</span>
+          </motion.div>
 
-        <main className="container mx-auto px-4 py-8 space-y-8">
-          {/* Main Dashboard Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Panel - Reports Table */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              className="lg:col-span-2"
-            >
-              <ReportsTable
-                reports={allReports}
-                onSelectReport={(report) => {
-                  setSelectedReport(report)
-                  setShowSlideOver(true)
-                }}
+          <div className="flex-1 max-w-md hidden sm:block">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500/60" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by product or company..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-emerald-500/20 rounded-lg text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-emerald-500/60"
               />
-            </motion.div>
-
-            {/* Right Panel - Analytics */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="space-y-6"
-            >
-              <AnalyticsPanel reports={allReports} />
-            </motion.div>
+            </div>
           </div>
 
-          {/* Bottom Panel - Verification Queue */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <VerificationQueue reports={allReports.filter((r) => r.status === "triaged").slice(0, 5)} />
-          </motion.div>
-        </main>
-      </div>
+          <div className="flex items-center gap-3">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => fetchProducts(activeTab === "analytics" ? undefined : activeTab.toUpperCase())}
+              className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </motion.button>
 
-      {/* Report Detail Slide Over */}
-      {selectedReport && (
-        <ReportDetailSlideOver
-          report={selectedReport}
-          isOpen={showSlideOver}
-          onClose={() => {
-            setShowSlideOver(false)
-            setTimeout(() => setSelectedReport(null), 300)
-          }}
-        />
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push("/")}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors group"
+            >
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">G</div>
+              <span className="text-sm text-white hidden sm:inline">Gov Admin</span>
+              <LogOut className="w-4 h-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </motion.button>
+          </div>
+        </div>
+      </motion.header>
+
+      <main className="container mx-auto px-4 py-8 relative z-10">
+
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {tabs.map((tab) => (
+            <motion.button
+              key={tab.id}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setActiveTab(tab.id as TabType)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all border ${
+                activeTab === tab.id
+                  ? `bg-slate-800 ${tab.color} ${tab.border}`
+                  : "bg-slate-900/50 text-slate-400 border-slate-700 hover:border-slate-500"
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </motion.button>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+
+          {/* Pending Tab */}
+          {activeTab === "pending" && (
+            <motion.div key="pending" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-yellow-400" />
+                  Pending Approvals
+                  <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">{filtered.length}</span>
+                </h2>
+              </div>
+
+              {loading ? <LoadingState /> : filtered.length === 0 ? (
+                <EmptyState icon={Clock} message="No pending approvals" color="text-yellow-400" />
+              ) : (
+                <div className="space-y-4">
+                  {filtered.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      expanded={expandedId === product._id}
+                      onToggle={() => setExpandedId(expandedId === product._id ? null : product._id)}
+                      onCompanyInfo={() => fetchCompanyInfo(product.companyId)}
+                      onNotify={() => setNotifyModal({ companyId: product.companyId, companyName: product.companyName, productId: product._id, productName: product.productName })}
+                      actions={
+                        <div className="flex gap-3 mt-4">
+                          <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            disabled={actionLoading === product._id}
+                            className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-emerald-500 to-lime-500 text-white font-semibold rounded-lg text-sm hover:shadow-lg hover:shadow-emerald-500/20 transition-all disabled:opacity-60"
+                            onClick={() => handleApprove(product._id)}
+                          >
+                            {actionLoading === product._id ? (
+                              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                            Approve
+                          </motion.button>
+
+                          {rejectingId === product._id ? (
+                            <div className="flex gap-2 flex-1">
+                              <input
+                                type="text"
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="Enter rejection reason..."
+                                className="flex-1 px-3 py-2 bg-slate-800 border border-red-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-red-500"
+                              />
+                              <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg text-sm"
+                                onClick={() => handleReject(product._id)}
+                              >
+                                Confirm
+                              </motion.button>
+                              <button onClick={() => setRejectingId(null)} className="px-3 py-2 text-slate-400 hover:text-white text-sm">Cancel</button>
+                            </div>
+                          ) : (
+                            <motion.button
+                              whileHover={{ scale: 1.03 }}
+                              whileTap={{ scale: 0.97 }}
+                              className="flex items-center gap-2 px-5 py-2 bg-red-500/10 border border-red-500/30 text-red-400 font-semibold rounded-lg text-sm hover:bg-red-500/20 transition-all"
+                              onClick={() => setRejectingId(product._id)}
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Reject
+                            </motion.button>
+                          )}
+                        </div>
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Approved Tab */}
+          {activeTab === "approved" && (
+            <motion.div key="approved" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  Approved Products
+                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full border border-emerald-500/30">{filtered.length}</span>
+                </h2>
+              </div>
+
+              {loading ? <LoadingState /> : filtered.length === 0 ? (
+                <EmptyState icon={CheckCircle} message="No approved products yet" color="text-emerald-400" />
+              ) : (
+                <div className="space-y-4">
+                  {filtered.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      expanded={expandedId === product._id}
+                      onToggle={() => setExpandedId(expandedId === product._id ? null : product._id)}
+                      onCompanyInfo={() => fetchCompanyInfo(product.companyId)}
+                      onNotify={() => setNotifyModal({ companyId: product.companyId, companyName: product.companyName, productId: product._id, productName: product.productName })}
+                      badge={
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          {product.productId && <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded">ID: {product.productId}</span>}
+                          {product.hash && <span className="px-2 py-0.5 bg-slate-700 text-slate-300 rounded font-mono">Hash: {product.hash.slice(0, 12)}...</span>}
+                        </div>
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Rejected Tab */}
+          {activeTab === "rejected" && (
+            <motion.div key="rejected" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-red-400" />
+                  Rejected Products
+                  <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/30">{filtered.length}</span>
+                </h2>
+              </div>
+
+              {loading ? <LoadingState /> : filtered.length === 0 ? (
+                <EmptyState icon={XCircle} message="No rejected products" color="text-red-400" />
+              ) : (
+                <div className="space-y-4">
+                  {filtered.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      expanded={expandedId === product._id}
+                      onToggle={() => setExpandedId(expandedId === product._id ? null : product._id)}
+                      onCompanyInfo={() => fetchCompanyInfo(product.companyId)}
+                      onNotify={() => setNotifyModal({ companyId: product.companyId, companyName: product.companyName, productId: product._id, productName: product.productName })}
+                      badge={
+                        product.rejectionReason ? (
+                          <div className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs">
+                            Reason: {product.rejectionReason}
+                          </div>
+                        ) : null
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
+            <AnalyticsTab />
+          )}
+
+        </AnimatePresence>
+      </main>
+
+      {/* Notification Sent Success Popup */}
+      <AnimatePresence>
+        {notifySuccess && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            {/* Blur backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md"
+            />
+
+            {/* Success card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.7, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -20 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              className="relative z-10 bg-slate-900 border border-emerald-500/30 rounded-3xl p-10 flex flex-col items-center gap-5 shadow-2xl max-w-sm w-full mx-4"
+            >
+              {/* Animated green tick circle */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", damping: 15, stiffness: 400, delay: 0.1 }}
+                className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-lime-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30"
+              >
+                <motion.svg
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="w-10 h-10 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <motion.path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                  />
+                </motion.svg>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="text-center"
+              >
+                <h3 className="text-2xl font-bold text-white mb-2">Message Sent!</h3>
+                <p className="text-slate-400 text-sm">Notification delivered to the company successfully.</p>
+              </motion.div>
+
+              {/* Auto-close progress bar */}
+              <motion.div className="w-full h-1 bg-slate-700 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ duration: 3, ease: "linear" }}
+                  className="h-full bg-gradient-to-r from-emerald-500 to-lime-500 rounded-full"
+                />
+              </motion.div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Notify Company Modal */}
+      <AnimatePresence>
+        {notifyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => { setNotifyModal(null); setNotifyMessage("") }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-slate-900 border border-emerald-500/20 rounded-2xl shadow-2xl z-10 p-6"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-lg font-bold text-white">📨 Notify Company</h2>
+                  <p className="text-sm text-slate-400 mt-0.5">
+                    To: <span className="text-emerald-400">{notifyModal.companyName}</span>
+                    {notifyModal.productName && <span className="text-slate-500"> · {notifyModal.productName}</span>}
+                  </p>
+                </div>
+                <button onClick={() => { setNotifyModal(null); setNotifyMessage("") }}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <textarea
+                value={notifyMessage}
+                onChange={(e) => setNotifyMessage(e.target.value)}
+                placeholder="Type your message to the company..."
+                rows={5}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors text-sm resize-none mb-4"
+              />
+
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: notifySending ? 1 : 1.02 }}
+                  whileTap={{ scale: notifySending ? 1 : 0.98 }}
+                  onClick={handleSendNotification}
+                  disabled={notifySending || !notifyMessage.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-lime-500 text-white font-semibold rounded-lg text-sm hover:shadow-lg transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {notifySending ? (
+                    <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</>
+                  ) : (
+                    "Send Notification"
+                  )}
+                </motion.button>
+                <button onClick={() => { setNotifyModal(null); setNotifyMessage("") }}
+                  className="px-5 py-2.5 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-800 transition-colors text-sm">
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Company Info Modal */}
+      <AnimatePresence>
+        {(companyModal || companyLoading) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCompanyModal(null)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-slate-900 border border-emerald-500/20 rounded-2xl shadow-2xl z-10 overflow-hidden"
+            >
+              {companyLoading ? (
+                <div className="p-12 text-center">
+                  <span className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />
+                  <p className="text-slate-400 mt-4">Loading company info...</p>
+                </div>
+              ) : companyModal && (
+                <>
+                  {/* Modal Header */}
+                  <div className="bg-gradient-to-r from-emerald-500/10 to-emerald-400/5 border-b border-emerald-500/20 px-6 py-5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-400 rounded-xl flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-white">{companyModal.companyName}</h2>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-emerald-400 text-sm">{companyModal.companyId}</span>
+                          <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs rounded-full">
+                            ✅ {companyModal.status?.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCompanyModal(null)}
+                      className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Company Details */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">🏢 Company Details</h3>
+                      {[
+                        { icon: User, label: "Owner / Director", value: companyModal.ownerName },
+                        { icon: Hash, label: "Registration No.", value: companyModal.registrationNumber },
+                        { icon: FileText, label: "License No.", value: companyModal.licenseNumber },
+                        { icon: FileText, label: "GST Number", value: companyModal.gstNumber },
+                        { icon: Calendar, label: "Established", value: companyModal.establishedYear },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-start gap-3">
+                          <item.icon className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs text-slate-500">{item.label}</p>
+                            <p className="text-sm text-white font-medium">{item.value || "N/A"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Contact & Location */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">📞 Contact & Location</h3>
+                      {[
+                        { icon: Mail, label: "Email", value: companyModal.contactEmail },
+                        { icon: Phone, label: "Phone", value: companyModal.contactPhone },
+                        { icon: Globe, label: "Website", value: companyModal.website || "N/A" },
+                        { icon: MapPin, label: "Location", value: `${companyModal.city}, ${companyModal.state} ${companyModal.pincode || ""}` },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-start gap-3">
+                          <item.icon className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs text-slate-500">{item.label}</p>
+                            <p className="text-sm text-white font-medium">{item.value}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// Product Card Component
+function ProductCard({ product, expanded, onToggle, onCompanyInfo, onNotify, actions, badge }: {
+  product: Product
+  expanded: boolean
+  onToggle: () => void
+  onCompanyInfo?: () => void
+  onNotify?: () => void
+  actions?: React.ReactNode
+  badge?: React.ReactNode
+}) {
+  return (
+    <motion.div
+      layout
+      className="bg-slate-900/60 border border-slate-700 rounded-xl overflow-hidden hover:border-emerald-500/30 transition-colors"
+    >
+      {/* Card Header */}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <h3 className="text-white font-bold text-lg">{product.productName}</h3>
+              <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded font-mono">{product.productType}</span>
+            </div>
+
+            <div className="flex items-center gap-3 text-sm text-slate-400 flex-wrap">
+              <span className="flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5" />
+                {product.companyName || product.companyId}
+              </span>
+              <span className="flex items-center gap-1">
+                <Package className="w-3.5 h-3.5" />
+                Batch: {product.batchNumber}
+              </span>
+              <span className="text-slate-500 text-xs">
+                Submitted: {new Date(product.submittedAt).toLocaleDateString("en-IN")}
+              </span>
+            </div>
+
+            {badge && <div className="mt-2">{badge}</div>}
+          </div>
+
+          {/* Top right buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            {onNotify && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onNotify}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/20 transition-colors"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                Notify
+              </motion.button>
+            )}
+            {onCompanyInfo && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onCompanyInfo}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Company Info
+              </motion.button>
+            )}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={onToggle}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Expanded Details */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-slate-700"
+            >
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+                {[
+                  { label: "Composition", value: product.composition },
+                  { label: "Mfg. Date", value: product.manufacturingDate },
+                  { label: "Expiry Date", value: product.expiryDate },
+                  { label: "Net Weight", value: product.netWeight || "N/A" },
+                  { label: "Price/KG", value: product.pricePerKg ? `₹${product.pricePerKg}` : "N/A" },
+                  { label: "Target Crops", value: product.targetCrops || "N/A" },
+                  { label: "Storage", value: product.storageConditions || "N/A" },
+                  { label: "Company ID", value: product.companyId },
+                ].map((item) => (
+                  <div key={item.label} className="bg-slate-800/50 rounded-lg p-3">
+                    <p className="text-slate-500 text-xs mb-1">{item.label}</p>
+                    <p className="text-white font-medium text-sm">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {actions && <div>{actions}</div>}
+      </div>
+    </motion.div>
+  )
+}
+
+// Analytics Tab
+function AnalyticsTab() {
+  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/gov/products")
+        const data = await res.json()
+        if (data.success) {
+          const all = data.products
+          setStats({
+            total: all.length,
+            pending: all.filter((p: Product) => p.status === "PENDING").length,
+            approved: all.filter((p: Product) => p.status === "APPROVED").length,
+            rejected: all.filter((p: Product) => p.status === "REJECTED").length,
+          })
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
+  }, [])
+
+  const statCards = [
+    { label: "Total Submissions", value: stats.total, color: "text-white", bg: "border-slate-600", icon: Package },
+    { label: "Pending Approval", value: stats.pending, color: "text-yellow-400", bg: "border-yellow-500/30", icon: Clock },
+    { label: "Approved", value: stats.approved, color: "text-emerald-400", bg: "border-emerald-500/30", icon: CheckCircle },
+    { label: "Rejected", value: stats.rejected, color: "text-red-400", bg: "border-red-500/30", icon: XCircle },
+  ]
+
+  return (
+    <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+      <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+        <BarChart3 className="w-5 h-5 text-blue-400" />
+        Analytics Overview
+      </h2>
+
+      {loading ? <LoadingState /> : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {statCards.map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className={`bg-slate-900/60 border ${stat.bg} rounded-xl p-6 text-center`}
+            >
+              <stat.icon className={`w-8 h-8 ${stat.color} mx-auto mb-3`} />
+              <p className={`text-4xl font-bold ${stat.color}`}>{stat.value}</p>
+              <p className="text-slate-400 text-sm mt-1">{stat.label}</p>
+            </motion.div>
+          ))}
+        </div>
       )}
+
+      <div className="bg-slate-900/60 border border-slate-700 rounded-xl p-6">
+        <h3 className="text-white font-semibold mb-4">📋 Registered Companies</h3>
+        <p className="text-slate-400 text-sm">Total pre-registered companies: <span className="text-emerald-400 font-bold text-lg">50</span></p>
+        <p className="text-slate-500 text-xs mt-2">All companies are government-verified and pre-registered in the system.</p>
+      </div>
+    </motion.div>
+  )
+}
+
+// Loading State
+function LoadingState() {
+  return (
+    <div className="text-center py-20">
+      <span className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />
+      <p className="text-slate-400 mt-4">Loading...</p>
+    </div>
+  )
+}
+
+// Empty State
+function EmptyState({ icon: Icon, message, color }: { icon: any, message: string, color: string }) {
+  return (
+    <div className="text-center py-20 bg-slate-900/40 rounded-2xl border border-slate-700">
+      <Icon className={`w-12 h-12 ${color} mx-auto mb-4 opacity-50`} />
+      <p className="text-slate-400 text-lg">{message}</p>
     </div>
   )
 }

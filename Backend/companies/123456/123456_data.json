@@ -1,0 +1,32 @@
+{
+  "formData": {
+    "companyName": "ABC",
+    "registrationNumber": "123456",
+    "licenseNumber": "12345",
+    "establishedYear": "2020",
+    "ownerName": "Sudarshan",
+    "contactEmail": "gufran2098@gmail.com",
+    "contactPhone": "9373277321",
+    "address": "Jadhav sankul ambad link road satpur nashik 422010",
+    "state": "Maharashtra",
+    "city": "Nashik",
+    "pincode": "422010",
+    "gstNumber": "ABC123",
+    "website": ""
+  },
+  "products": [
+    {
+      "productName": "ParleG",
+      "productType": "Foods",
+      "composition": "10:10:10",
+      "batchNumber": "1",
+      "manufacturingDate": "",
+      "expiryDate": "",
+      "pricePerKg": "3",
+      "packagingSizes": "1",
+      "registrationId": "123",
+      "status": "verified"
+    }
+  ],
+  "createdAt": "4/16/2026, 7:46:06 PM"
+}

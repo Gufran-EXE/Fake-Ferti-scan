@@ -45,23 +45,37 @@ export default function Navbar() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="flex items-center gap-3"
         >
+          {/* Government Portal */}
           <motion.button
             onClick={() => (window.location.href = "/admin-login")}
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
-            className="px-4 py-2 bg-slate-800 dark:bg-slate-900 text-emerald-400 font-semibold rounded-full text-sm border border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-lg hover:shadow-emerald-500/20 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
-            aria-label="Admin portal login"
+            className="px-5 py-2.5 bg-slate-800 dark:bg-slate-900 text-emerald-400 font-semibold rounded-full text-base border border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-lg hover:shadow-emerald-500/20 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+            aria-label="Government portal login"
           >
-            {t.admin}
+            🏛️ Government Portal
           </motion.button>
+
+          {/* Company Portal */}
           <motion.button
-            onClick={() => (window.location.href = "/auth")}
-            whileHover={{ scale: 1.05 }}
+            onClick={() => (window.location.href = "/company-login")}
+            whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
-            className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-yellow-400 dark:from-yellow-400 dark:to-yellow-300 text-slate-900 font-semibold rounded-full text-sm hover:shadow-lg transition-shadow focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
-            aria-label="Login to your account"
+            className="px-5 py-2.5 bg-slate-800 dark:bg-slate-900 text-yellow-400 font-semibold rounded-full text-base border border-yellow-500/30 hover:border-yellow-500/60 hover:shadow-lg hover:shadow-yellow-500/20 transition-all focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+            aria-label="Company portal login"
           >
-            {t.login}
+            🏢 Company Portal
+          </motion.button>
+
+          {/* Verify Product */}
+          <motion.button
+            onClick={() => (window.location.href = "/verify")}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-7 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-400 dark:from-yellow-400 dark:to-yellow-300 text-slate-900 font-semibold rounded-full text-base hover:shadow-lg transition-shadow focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+            aria-label="Verify a product"
+          >
+            🔍 Verify Product
           </motion.button>
         </motion.div>
       </div>

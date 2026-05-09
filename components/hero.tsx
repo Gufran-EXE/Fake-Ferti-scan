@@ -206,6 +206,7 @@ export default function Hero() {
                 { src: "/3.png", alt: "Fertiscan App" },
                 { src: "/4.png", alt: "QR Scanning" },
                 { src: "/5.png", alt: "Happy Farmer" },
+                { src: "/6.png", alt: "Fertilizer Verification" },
               ].map((image, index) => (
                 <motion.div
                   key={index}
@@ -227,9 +228,9 @@ export default function Hero() {
                     ],
                   }}
                   transition={{
-                    duration: 10, // Total cycle time (2s * 5 images)
+                    duration: 12, // Total cycle time (2s * 6 images)
                     repeat: Number.POSITIVE_INFINITY,
-                    delay: index * 2, // Each image starts 2s after the previous
+                    delay: index * 2,
                     ease: "easeInOut",
                   }}
                 >
@@ -246,7 +247,7 @@ export default function Hero() {
               
               {/* Carousel indicators */}
               <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3">
-                {[...Array(5)].map((_, i) => (
+                {[...Array(6)].map((_, i) => (
                   <motion.div
                     key={i}
                     className="w-3 h-3 rounded-full bg-white/60 backdrop-blur-sm"
@@ -258,11 +259,12 @@ export default function Hero() {
                         "rgba(255,255,255,0.6)",
                         "rgba(255,255,255,0.6)",
                         "rgba(255,255,255,0.6)",
+                        "rgba(255,255,255,0.6)",
                       ],
-                      scale: [1, 1.4, 1, 1, 1, 1],
+                      scale: [1, 1.4, 1, 1, 1, 1, 1],
                     }}
                     transition={{
-                      duration: 10,
+                      duration: 12,
                       repeat: Number.POSITIVE_INFINITY,
                       delay: i * 2,
                     }}
