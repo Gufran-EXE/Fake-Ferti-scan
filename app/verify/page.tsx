@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Search, CheckCircle, XCircle, Package, Building2, Hash, Calendar, AlertTriangle } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ArrowLeft, Search, CheckCircle, XCircle, Package, Building2, Hash, Calendar, AlertTriangle, QrCode } from "lucide-react"
 
 interface ProductResult {
   productId: string
@@ -20,36 +20,63 @@ interface ProductResult {
 
 export default function VerifyPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [productId, setProductId] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ genuine: boolean; product?: ProductResult; message: string } | null>(null)
   const [showReportForm, setShowReportForm] = useState(false)
   const [reportData, setReportData] = useState({ location: "", description: "" })
   const [reportSubmitted, setReportSubmitted] = useState(false)
+  const [scannedMode, setScannedMode] = useState(false)
+
+  // Auto-verify if QR data comes from scanner via URL param
+  const verifyQRData = useCallback(async (qrData: string) => {
+    setLoading(true)
+    setResult(null)
+    setScannedMode(true)
+    try {
+      const res = await fetch("/api/verify-qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qrData }),
+      })
+      const data = await res.json()
+      setResult(data)
+    } catch {
+      setResult({ genuine: false, message: "Failed to verify. Please try again." })
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const qrParam = searchParams.get("qr")
+    if (qrParam) {
+      const decoded = decodeURIComponent(qrParam)
+      // Try to extract productId for display
+      try {
+        const parsed = JSON.parse(decoded)
+        if (parsed.productId) setProductId(parsed.productId)
+      } catch {}
+      verifyQRData(decoded)
+    }
+  }, [searchParams, verifyQRData])
 
   const handleVerify = async () => {
     if (!productId.trim()) return
     setLoading(true)
     setResult(null)
+    setScannedMode(false)
 
     try {
-      // Build QR-like payload with just productId for web verification
-      const qrData = JSON.stringify({
-        productId: productId.trim().toUpperCase(),
-        companyId: "",
-        batchNumber: "",
-        hash: "",
-      })
-
       const res = await fetch("/api/verify-product", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId: productId.trim().toUpperCase() }),
       })
-
       const data = await res.json()
       setResult(data)
-    } catch (err) {
+    } catch {
       setResult({ genuine: false, message: "Failed to verify. Please try again." })
     } finally {
       setLoading(false)
@@ -135,6 +162,19 @@ export default function VerifyPage() {
           </p>
         </motion.div>
 
+        {/* Loading state for QR auto-verify */}
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-slate-900/60 border border-slate-700 rounded-2xl p-10 text-center"
+          >
+            <span className="w-10 h-10 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin inline-block mb-4" />
+            <p className="text-white font-semibold">{scannedMode ? "Verifying QR code..." : "Checking product..."}</p>
+            <p className="text-slate-400 text-sm mt-1">Checking against government database</p>
+          </motion.div>
+        )}
+
         {/* Result */}
         <AnimatePresence>
           {result && (
@@ -159,7 +199,14 @@ export default function VerifyPage() {
                     </motion.div>
                     <div>
                       <h2 className="text-xl font-bold text-white">✅ Genuine Product Verified</h2>
-                      <p className="text-emerald-100 text-sm">This product is registered and government approved</p>
+                      <p className="text-emerald-100 text-sm">
+                        {scannedMode ? "QR code scanned & verified — government approved" : "This product is registered and government approved"}
+                      </p>
+                      {scannedMode && (
+                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-white/20 rounded-full text-xs text-white font-medium">
+                          <QrCode className="w-3 h-3" /> Verified via QR Scan
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -189,7 +236,7 @@ export default function VerifyPage() {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => { setResult(null); setProductId("") }}
+                      onClick={() => { setResult(null); setProductId(""); setScannedMode(false); router.replace("/verify") }}
                       className="w-full py-3 bg-slate-800 border border-slate-600 text-slate-300 font-semibold rounded-lg hover:bg-slate-700 transition-all mt-2"
                     >
                       Verify Another Product
@@ -239,7 +286,7 @@ export default function VerifyPage() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => { setResult(null); setProductId("") }}
+                        onClick={() => { setResult(null); setProductId(""); setScannedMode(false); router.replace("/verify") }}
                         className="flex-1 py-3 bg-slate-800 border border-slate-600 text-slate-300 font-semibold rounded-lg hover:bg-slate-700 transition-all"
                       >
                         Try Again

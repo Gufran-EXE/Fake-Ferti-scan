@@ -347,9 +347,9 @@ export default function Hero() {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScanSuccess={(decodedText) => {
-          console.log("QR Code scanned:", decodedText)
-          // Redirect to home page after successful scan
-          router.push("/")
+          // Encode the scanned QR data and send to verify page
+          const encoded = encodeURIComponent(decodedText)
+          router.push(`/verify?qr=${encoded}`)
         }}
       />
     </section>
