@@ -71,7 +71,7 @@ export default function VerifyPage() {
         }}
       />
 
-      <div className="relative z-10 container mx-auto px-4 py-12 max-w-2xl">
+      <div className="relative z-10 container mx-auto px-4 py-8 sm:py-12 max-w-2xl">
         {/* Back button */}
         <motion.button
           initial={{ opacity: 0, x: -20 }}
@@ -79,7 +79,7 @@ export default function VerifyPage() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => router.push("/")}
-          className="flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors mb-10"
+          className="flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Home
@@ -89,13 +89,13 @@ export default function VerifyPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
+          className="text-center mb-8"
         >
-          <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-yellow-500/20">
-            <Search className="w-8 h-8 text-slate-900" />
+          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-yellow-500 to-yellow-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-yellow-500/20">
+            <Search className="w-7 h-7 sm:w-8 sm:h-8 text-slate-900" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Verify Fertilizer Product</h1>
-          <p className="text-slate-400">Enter the Product ID from the fertilizer packaging to check authenticity</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Verify Fertilizer Product</h1>
+          <p className="text-slate-400 text-sm sm:text-base px-2">Enter the Product ID from the fertilizer packaging to check authenticity</p>
         </motion.div>
 
         {/* Search Box */}
@@ -103,15 +103,15 @@ export default function VerifyPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-slate-900/60 border border-slate-700 rounded-2xl p-6 mb-6"
+          className="bg-slate-900/60 border border-slate-700 rounded-2xl p-4 sm:p-6 mb-6"
         >
           <label className="block text-sm font-medium text-slate-300 mb-2">Product ID</label>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleVerify()}
+              onKeyDown={(e) => e.key === "Enter" && handleVerify()}
               placeholder="e.g. PROD5678 or REG-2024-001"
               className="flex-1 px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500 transition-colors uppercase"
             />
@@ -120,7 +120,7 @@ export default function VerifyPage() {
               whileTap={{ scale: 0.95 }}
               onClick={handleVerify}
               disabled={loading || !productId.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-400 text-slate-900 font-bold rounded-lg hover:shadow-lg hover:shadow-yellow-500/20 transition-all disabled:opacity-60 flex items-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-400 text-slate-900 font-bold rounded-lg hover:shadow-lg hover:shadow-yellow-500/20 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <span className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
@@ -164,8 +164,8 @@ export default function VerifyPage() {
                   </div>
 
                   {/* Product Details */}
-                  <div className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 sm:p-6 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
                         { icon: Package, label: "Product Name", value: result.product.productName },
                         { icon: Hash, label: "Product ID", value: result.product.productId },
@@ -215,7 +215,7 @@ export default function VerifyPage() {
                     </div>
                   </div>
 
-                  <div className="p-6 space-y-4">
+                  <div className="p-4 sm:p-6 space-y-4">
                     <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">
                       <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                       <div>
@@ -227,7 +227,7 @@ export default function VerifyPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}

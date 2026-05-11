@@ -26,8 +26,8 @@ export default function AdminLoginPage() {
       <div className="absolute bottom-20 left-20 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
 
       {/* Main container */}
-      <div className="relative z-10 max-w-5xl w-full px-4 mx-auto">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
+      <div className="relative z-10 max-w-5xl w-full px-4 mx-auto py-8">
+        <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
           {/* Left side - Copy and Shield Icon */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}

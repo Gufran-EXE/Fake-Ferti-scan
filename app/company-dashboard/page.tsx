@@ -224,17 +224,17 @@ export default function CompanyDashboard() {
         className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-yellow-500/20"
       >
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-yellow-500 to-yellow-400 rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-slate-900" />
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-yellow-500 to-yellow-400 rounded-lg flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900" />
             </div>
-            <div>
-              <p className="font-bold text-white text-sm">{session.companyName}</p>
+            <div className="min-w-0">
+              <p className="font-bold text-white text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{session.companyName}</p>
               <p className="text-xs text-yellow-400">{session.companyId}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Notification Bell */}
             <div className="relative">
               <motion.button
@@ -267,7 +267,7 @@ export default function CompanyDashboard() {
                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-80 bg-slate-900 border border-yellow-500/20 rounded-xl shadow-2xl z-50 overflow-hidden"
+                    className="absolute right-0 mt-2 w-72 sm:w-80 bg-slate-900 border border-yellow-500/20 rounded-xl shadow-2xl z-50 overflow-hidden"
                   >
                     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
                       <h3 className="font-semibold text-white text-sm">Notifications</h3>
@@ -309,10 +309,10 @@ export default function CompanyDashboard() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors text-xs sm:text-sm"
             >
               <LogOut className="w-4 h-4" />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </motion.button>
           </div>
         </div>
@@ -361,7 +361,7 @@ export default function CompanyDashboard() {
                 exit={{ opacity: 0, height: 0 }}
                 className="p-6"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Company Info */}
                   <div className="space-y-3">
                     <h3 className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-3">🏢 Company Info</h3>
@@ -470,14 +470,14 @@ export default function CompanyDashboard() {
         <div className="flex gap-2">
           {[
             { id: "products", label: "My Products", icon: Package },
-            { id: "add", label: "Add New Product", icon: Plus },
+            { id: "add", label: "Add Product", icon: Plus },
           ].map((tab) => (
             <motion.button
               key={tab.id}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab(tab.id as "products" | "add")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
                 activeTab === tab.id
                   ? "bg-gradient-to-r from-yellow-500 to-yellow-400 text-slate-900"
                   : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
@@ -534,7 +534,7 @@ export default function CompanyDashboard() {
                             : "bg-slate-900/60 border-slate-700 hover:border-yellow-500/30"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <h3 className={`font-bold text-lg ${isRejected ? "text-slate-400" : "text-white"}`}>
@@ -560,7 +560,7 @@ export default function CompanyDashboard() {
                               </motion.div>
                             )}
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                               <div>
                                 <p className="text-slate-500 text-xs">Batch Number</p>
                                 <p className={`font-medium ${isRejected ? "text-slate-500" : "text-slate-300"}`}>{product.batchNumber}</p>
@@ -578,15 +578,15 @@ export default function CompanyDashboard() {
                                 <p className={`font-medium ${isRejected ? "text-slate-500" : "text-slate-300"}`}>{product.expiryDate}</p>
                               </div>
                             </div>
-                            <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
-                              <span>ID: {product._id}</span>
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                              <span className="truncate">ID: {product._id}</span>
                               <span>Company: {product.companyId}</span>
-                              <span>Submitted: {new Date(product.submittedAt).toLocaleString()}</span>
+                              <span>Submitted: {new Date(product.submittedAt).toLocaleDateString()}</span>
                             </div>
                           </div>
 
                           {/* Right side actions */}
-                          <div className="flex flex-col items-end gap-2 shrink-0">
+                          <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 w-full sm:w-auto">
                             {/* Delete bin button - only for rejected products */}
                             {isRejected && (
                               <motion.button
