@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Search, CheckCircle, XCircle, Package, Building2, Hash, Calendar, AlertTriangle, QrCode } from "lucide-react"
@@ -18,7 +18,20 @@ interface ProductResult {
   approvedAt: string
 }
 
+// Default export wraps the inner component in Suspense (required by Next.js for useSearchParams)
 export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <span className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <VerifyPageInner />
+    </Suspense>
+  )
+}
+
+function VerifyPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [productId, setProductId] = useState("")
