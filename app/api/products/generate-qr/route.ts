@@ -45,18 +45,14 @@ export async function POST(req: NextRequest) {
     const dataToHash = `${product.companyId}|${generatedProductId}|${product.batchNumber}|${timestamp}`
     const hash = crypto.createHash("sha256").update(dataToHash).digest("hex")
 
-    // Build QR payload
+    // Build QR payload — keep minimal (4 fields only) so the QR is
+    // scannable by mobile cameras. The backend looks up full product
+    // details from MongoDB using productId after verification.
     const qrPayload = JSON.stringify({
       productId: generatedProductId,
       companyId: product.companyId,
-      companyName: product.companyName,
-      productName: product.productName,
-      composition: product.composition,
       batchNumber: product.batchNumber,
-      manufacturingDate: product.manufacturingDate,
-      expiryDate: product.expiryDate,
       hash,
-      approvedAt: product.approvedAt || new Date().toISOString(),
     })
 
     // Generate QR code as base64 PNG

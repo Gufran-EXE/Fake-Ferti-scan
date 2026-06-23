@@ -3,8 +3,31 @@ import { connectDB } from "@/lib/mongodb"
 import { Product } from "@/lib/models/Product"
 import crypto from "crypto"
 
+// Allow Flutter & mobile apps to call this API
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
+    },
+  })
+}
+
 export async function POST(req: NextRequest) {
   try {
+    // Security: if a key is sent, it must match. If no key is sent,
+    // allow it (web browser same-origin requests from the /verify page).
+    const apiKey = req.headers.get("x-api-key")
+    const validKey = process.env.FLUTTER_APP_API_KEY
+    if (apiKey && validKey && apiKey !== validKey) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
     const { qrData } = await req.json()
 
     if (!qrData) {
@@ -74,6 +97,8 @@ export async function POST(req: NextRequest) {
         status: product.status,
         approvedAt: product.approvedAt,
       },
+    }, {
+      headers: { "Access-Control-Allow-Origin": "*" }
     })
   } catch (error: any) {
     console.error("QR verification error:", error)
