@@ -50,6 +50,7 @@
     "framer-motion": "latest",
     "html5-qrcode": "^2.3.8",
     "input-otp": "1.4.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.454.0",
     "mongoose": "^9.4.1",
     "next": "^15.1.3",

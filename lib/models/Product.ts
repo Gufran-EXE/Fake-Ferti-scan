@@ -22,6 +22,11 @@ const ProductSchema = new Schema({
   rejectionReason: { type: String },
   hash: { type: String },
   qrCode: { type: String },
+  // Number of bags/units in this batch — used for serialized QR generation
+  quantity: { type: Number, default: 1, min: 1, max: 10000 },
+  // true once serialized QRs have been generated (replaces single qrCode flow)
+  serialsGenerated: { type: Boolean, default: false },
+
   qrRequested: { type: Boolean, default: false },
   submittedAt: { type: Date, default: Date.now },
   approvedAt: { type: Date },

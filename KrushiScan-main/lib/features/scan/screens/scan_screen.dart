@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart' hide BarcodeFormat;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -30,6 +34,38 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   bool _hasScanned = false;
   ProductModel? _scannedProduct;
   bool? _isAuthentic;
+  String? _cityName;   // resolved from lat/lng via Nominatim
+
+  // ── Reverse geocode lat/lng → "City, State" using OpenStreetMap Nominatim ──
+  Future<String?> _reverseGeocode(double lat, double lng) async {
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse'
+        '?format=json&lat=$lat&lon=$lng&zoom=10&addressdetails=1',
+      );
+      final res = await http.get(uri, headers: {
+        'User-Agent': 'KrushiScan/1.0 (fertilizer verification app)',
+      }).timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final addr = data['address'] as Map<String, dynamic>? ?? {};
+        // Pick the most specific human-readable name available
+        final city = addr['city']
+            ?? addr['town']
+            ?? addr['village']
+            ?? addr['county']
+            ?? '';
+        final state = addr['state'] ?? '';
+        if (city.isNotEmpty && state.isNotEmpty) return '$city, $state';
+        if (city.isNotEmpty) return city;
+        if (state.isNotEmpty) return state;
+      }
+    } catch (_) {
+      // Silently ignore — location name is optional UI sugar
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -58,6 +94,32 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  // ── Get GPS location (best-effort, never blocks scan) ──
+  Future<Position?> _getLocation() async {
+    try {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+
+      // Check / request permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null; // User denied — scan still works, just no location
+      }
+
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 5), // never block more than 5s
+      );
+    } catch (_) {
+      return null; // GPS unavailable — continue without location
+    }
+  }
+
   // ── QR Detected from Camera ──
   Future<void> _onQRDetected(String qrCode) async {
     if (_loading || _hasScanned) return;
@@ -70,7 +132,14 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     try {
       await _scannerCtrl.stop();
 
-      final product = await _scanService.verifyProduct(qrCode);
+      // Get GPS location (best-effort, never fails the scan)
+      final position = await _getLocation();
+
+      final product = await _scanService.verifyProduct(
+        qrCode,
+        lat: position?.latitude,
+        lng: position?.longitude,
+      );
 
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString(AppConstants.prefUserId) ?? '';
@@ -93,6 +162,17 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           _isAuthentic = product != null;
           _loading = false;
         });
+
+        // Resolve city name from the scan location (non-blocking)
+        if (product != null &&
+            product.scanLat != null &&
+            product.scanLng != null) {
+          _reverseGeocode(product.scanLat!, product.scanLng!).then((city) {
+            if (mounted && city != null) {
+              setState(() => _cityName = city);
+            }
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -207,6 +287,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
       _loading = false;
       _scannedProduct = null;
       _isAuthentic = null;
+      _cityName = null;
     });
   }
 
@@ -377,6 +458,33 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
   // ── Result View ──
   Widget _buildResultView(AppLocalizations l10n) {
     final isAuth = _isAuthentic!;
+    final isFraud = isAuth && (_scannedProduct?.fraudAlert ?? false);
+
+    // Colour scheme: green = genuine, orange = genuine but suspicious, red = fake
+    final Color statusColor = isFraud
+        ? Colors.orange
+        : isAuth
+            ? AppColors.authentic
+            : AppColors.fake;
+
+    final IconData statusIcon = isFraud
+        ? Icons.warning_amber_rounded
+        : isAuth
+            ? Icons.verified_rounded
+            : Icons.dangerous_rounded;
+
+    final String statusTitle = isFraud
+        ? 'Suspicious Scan'
+        : isAuth
+            ? l10n.authenticProduct
+            : l10n.fakeProduct;
+
+    final String statusSubtitle = isFraud
+        ? 'Product is registered but this scan is suspicious ⚠️'
+        : isAuth
+            ? 'This fertilizer is verified ✅'
+            : 'Warning! This may be counterfeit ⚠️';
+
     return Container(
       color: AppColors.background,
       child: SafeArea(
@@ -390,37 +498,26 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                 width: 140,
                 height: 140,
                 decoration: BoxDecoration(
-                  color: isAuth
-                      ? AppColors.authentic.withOpacity(0.12)
-                      : AppColors.fake.withOpacity(0.12),
+                  color: statusColor.withOpacity(0.12),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isAuth ? AppColors.authentic : AppColors.fake,
-                    width: 3,
-                  ),
+                  border: Border.all(color: statusColor, width: 3),
                 ),
-                child: Icon(
-                  isAuth ? Icons.verified_rounded : Icons.dangerous_rounded,
-                  size: 72,
-                  color: isAuth ? AppColors.authentic : AppColors.fake,
-                ),
+                child: Icon(statusIcon, size: 72, color: statusColor),
               ),
               const SizedBox(height: 20),
 
               Text(
-                isAuth ? l10n.authenticProduct : l10n.fakeProduct,
+                statusTitle,
                 style: GoogleFonts.poppins(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: isAuth ? AppColors.authentic : AppColors.fake,
+                  color: statusColor,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                isAuth
-                    ? 'This fertilizer is verified ✅'
-                    : 'Warning! This may be counterfeit ⚠️',
+                statusSubtitle,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   color: AppColors.textGrey,
@@ -430,6 +527,90 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
               const SizedBox(height: 28),
 
               if (isAuth && _scannedProduct != null) ...[
+                // ── Expired Product Banner ──────────────────────────────────
+                if (_scannedProduct!.isExpired) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.red.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.hourglass_disabled,
+                            color: Colors.redAccent, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'This product has EXPIRED. Do not use it on crops.',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: Colors.red.shade300,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // ── Fraud Alert Banner ──────────────────────────────────────
+                if (isFraud) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded,
+                                color: Colors.black, size: 22),
+                            SizedBox(width: 8),
+                            Text(
+                              'FRAUD ALERT',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _scannedProduct!.fraudMessage,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Report this to your local agriculture officer immediately.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.black54,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // ── Product Details Card ────────────────────────────────────
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -437,7 +618,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppColors.authentic.withOpacity(0.3),
+                      color: statusColor.withOpacity(0.3),
                     ),
                   ),
                   child: Column(
@@ -492,6 +673,21 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                         label: 'Status',
                         value: '✅ Government Approved',
                       ),
+                      if (_scannedProduct!.serial != null)
+                        _DetailRow(
+                          icon: Icons.qr_code,
+                          label: 'Bag Serial',
+                          value: _scannedProduct!.serial!,
+                        ),
+                      if (_scannedProduct!.scanCount != null)
+                        _DetailRow(
+                          icon: Icons.history,
+                          label: 'Times Scanned',
+                          value: '${_scannedProduct!.scanCount}',
+                          valueColor: (_scannedProduct!.scanCount ?? 0) >= 2
+                              ? Colors.orange
+                              : null,
+                        ),
                     ],
                   ),
                 ),
@@ -536,6 +732,108 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
                 ),
               ],
 
+              // ── Your Scan Location Card ─────────────────────────────────
+              if (_scannedProduct?.scanLat != null &&
+                  _scannedProduct?.scanLng != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blue.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.location_on,
+                            color: Colors.blueAccent, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Scanned from',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: Colors.blue.shade300,
+                              ),
+                            ),
+                            Text(
+                              _cityName ??
+                                  '${_scannedProduct!.scanLat!.toStringAsFixed(4)}, '
+                                  '${_scannedProduct!.scanLng!.toStringAsFixed(4)}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            if (_cityName != null)
+                              Text(
+                                '${_scannedProduct!.scanLat!.toStringAsFixed(5)}, '
+                                '${_scannedProduct!.scanLng!.toStringAsFixed(5)}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: Colors.blue.shade400,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      // Open in Google Maps
+                      GestureDetector(
+                        onTap: () async {
+                          final lat = _scannedProduct!.scanLat!;
+                          final lng = _scannedProduct!.scanLng!;
+                          final uri = Uri.parse(
+                            'https://www.google.com/maps?q=$lat,$lng',
+                          );
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border:
+                                Border.all(color: Colors.blue.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.map_outlined,
+                                  color: Colors.blueAccent, size: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Map',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.blueAccent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 28),
 
               SizedBox(
@@ -562,11 +860,13 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
 class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label, value;
+  final Color? valueColor;
 
   const _DetailRow({
     required this.icon,
     required this.label,
     required this.value,
+    this.valueColor,
   });
 
   @override
@@ -587,7 +887,7 @@ class _DetailRow extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
+              color: valueColor ?? AppColors.textDark,
             ),
           ),
         ],

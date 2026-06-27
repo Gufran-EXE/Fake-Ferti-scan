@@ -30,6 +30,8 @@ interface Product {
   rejectionReason?: string
   productId?: string
   hash?: string
+  quantity?: number
+  serialsGenerated?: boolean
 }
 
 type TabType = "pending" | "approved" | "rejected" | "analytics"
@@ -90,6 +92,66 @@ export default function GovernmentDashboard() {
       alert("Failed to send notification")
     } finally {
       setNotifySending(false)
+    }
+  }
+
+  const [generatingZip, setGeneratingZip] = useState<string | null>(null)
+
+  // ── Scan History Modal ──────────────────────────────────────────────────────
+  const [scanModal, setScanModal] = useState<{ productId: string; productName: string } | null>(null)
+  const [scanHistory, setScanHistory] = useState<any | null>(null)
+  const [scanHistoryLoading, setScanHistoryLoading] = useState(false)
+
+  const fetchScanHistory = async (productId: string, productName: string) => {
+    setScanModal({ productId, productName })
+    setScanHistory(null)
+    setScanHistoryLoading(true)
+    try {
+      const res = await fetch(`/api/products/scan-history?productId=${productId}`)
+      const data = await res.json()
+      if (data.success) setScanHistory(data)
+    } catch (err) {
+      console.error("Failed to fetch scan history:", err)
+    } finally {
+      setScanHistoryLoading(false)
+    }
+  }
+
+  const handleGenerateSerials = async (
+    productMongoId: string,
+    productName: string,
+    quantityOverride?: number,
+    forceRegenerate = false,
+  ) => {
+    setGeneratingZip(productMongoId)
+    try {
+      const res = await fetch("/api/products/generate-serials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: productMongoId, quantityOverride, forceRegenerate }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Unknown error" }))
+        alert(`Error: ${err.message}`)
+        return
+      }
+
+      // Always a ZIP now — download it directly
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${productName.replace(/\s+/g, "_")}_QRCodes.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      // Refresh product list so serialsGenerated badge updates
+      await fetchProducts(activeTab)
+    } catch (err) {
+      alert("Failed to generate QR codes. Please try again.")
+    } finally {
+      setGeneratingZip(null)
     }
   }
 
@@ -374,9 +436,80 @@ export default function GovernmentDashboard() {
                       onCompanyInfo={() => fetchCompanyInfo(product.companyId)}
                       onNotify={() => setNotifyModal({ companyId: product.companyId, companyName: product.companyName, productId: product._id, productName: product.productName })}
                       badge={
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                          {product.productId && <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded">ID: {product.productId}</span>}
-                          {product.hash && <span className="px-2 py-0.5 bg-slate-700 text-slate-300 rounded font-mono">Hash: {product.hash.slice(0, 12)}...</span>}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 text-xs text-slate-400">
+                            {product.productId && <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded">ID: {product.productId}</span>}
+                            {(product as any).quantity && <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded">📦 {(product as any).quantity} bags</span>}
+                            {product.hash && <span className="px-2 py-0.5 bg-slate-700 text-slate-300 rounded font-mono">Hash: {product.hash.slice(0, 12)}...</span>}
+                          </div>
+                          {/* Generate Serialized QR Codes Button */}
+                          {!product.serialsGenerated ? (
+                            <button
+                              onClick={() => {
+                                const qty = product.quantity
+                                // Only prompt if quantity was never set (null/undefined)
+                                if (qty == null) {
+                                  const entered = window.prompt(
+                                    `How many bags/units are in this batch?\n(Enter a number between 1 and 10000)`,
+                                    "10"
+                                  )
+                                  if (!entered || isNaN(Number(entered))) return
+                                  const n = Math.min(10000, Math.max(1, parseInt(entered)))
+                                  handleGenerateSerials(product._id, product.productName, n)
+                                } else {
+                                  handleGenerateSerials(product._id, product.productName, qty)
+                                }
+                              }}
+                              disabled={generatingZip === product._id}
+                              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-60 w-fit"
+                            >
+                              {generatingZip === product._id ? (
+                                <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating {product.quantity ?? '?'} QR Codes...</>
+                              ) : (
+                                <>📦 Generate {product.quantity ?? '?'} Unique QR Codes → Download ZIP</>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-lg font-medium">
+                                ✅ {product.quantity ?? '?'} Serialized QR Codes Generated
+                              </span>
+                              <button
+                                onClick={() => handleGenerateSerials(product._id, product.productName, product.quantity ?? undefined)}
+                                disabled={generatingZip === product._id}
+                                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-60 text-slate-300 text-xs rounded-lg transition-colors flex items-center gap-1"
+                              >
+                                {generatingZip === product._id ? (
+                                  <><span className="w-3 h-3 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" /> Building ZIP...</>
+                                ) : (
+                                  <>↓ Re-download ZIP</>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const entered = window.prompt(
+                                    `Re-generate with a different quantity?\nCurrent: ${product.quantity ?? 'unknown'} bags\nEnter new number (1–10000):`,
+                                    String(product.quantity ?? 10)
+                                  )
+                                  if (!entered || isNaN(Number(entered))) return
+                                  const n = Math.min(10000, Math.max(1, parseInt(entered)))
+                                  handleGenerateSerials(product._id, product.productName, n, true)
+                                }}
+                                disabled={generatingZip === product._id}
+                                className="px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 disabled:opacity-60 text-orange-400 text-xs rounded-lg transition-colors"
+                              >
+                                ↺ Re-generate
+                              </button>
+                              {product.productId && (
+                                <button
+                                  onClick={() => fetchScanHistory(product.productId!, product.productName)}
+                                  className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-purple-400 text-xs rounded-lg transition-colors flex items-center gap-1"
+                                >
+                                  <MapPin className="w-3 h-3" /> Scan History
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       }
                     />
@@ -654,6 +787,147 @@ export default function GovernmentDashboard() {
                   </div>
                 </>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Scan History Modal */}
+      <AnimatePresence>
+        {scanModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => { setScanModal(null); setScanHistory(null) }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-3xl max-h-[85vh] bg-slate-900 border border-purple-500/20 rounded-2xl shadow-2xl z-10 flex flex-col overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-purple-500/10 to-purple-400/5 border-b border-purple-500/20 px-6 py-4 flex items-center justify-between shrink-0">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-purple-400" />
+                    Scan History
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-0.5">{scanModal.productName} · <span className="text-purple-400 font-mono text-xs">{scanModal.productId}</span></p>
+                </div>
+                <button onClick={() => { setScanModal(null); setScanHistory(null) }}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="overflow-y-auto p-6 space-y-4">
+                {scanHistoryLoading ? (
+                  <div className="text-center py-12">
+                    <span className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin inline-block" />
+                    <p className="text-slate-400 mt-3">Loading scan history...</p>
+                  </div>
+                ) : scanHistory ? (
+                  <>
+                    {/* Summary cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+                      {[
+                        { label: "Total Bags", value: scanHistory.summary.totalSerials, color: "text-slate-300", border: "border-slate-600" },
+                        { label: "Bags Scanned", value: scanHistory.summary.scannedSerials, color: "text-emerald-400", border: "border-emerald-500/30" },
+                        { label: "Total Scans", value: scanHistory.summary.totalScans, color: "text-blue-400", border: "border-blue-500/30" },
+                        { label: "⚠️ Suspicious", value: scanHistory.summary.suspiciousSerials, color: "text-orange-400", border: "border-orange-500/30" },
+                      ].map((s) => (
+                        <div key={s.label} className={`bg-slate-800/60 border ${s.border} rounded-xl p-3 text-center`}>
+                          <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                          <p className="text-slate-500 text-xs mt-1">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Serial list */}
+                    {scanHistory.serials.length === 0 ? (
+                      <div className="text-center py-10 text-slate-500">No serials found for this product.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {scanHistory.serials.map((s: any) => (
+                          <div key={s.serial}
+                            className={`rounded-xl border p-4 ${s.suspicious
+                              ? "bg-orange-500/5 border-orange-500/20"
+                              : s.scanCount > 0
+                                ? "bg-emerald-500/5 border-emerald-500/20"
+                                : "bg-slate-800/40 border-slate-700"}`}
+                          >
+                            {/* Serial header */}
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <span className="font-mono text-xs text-slate-300">{s.serial}</span>
+                              <div className="flex items-center gap-2">
+                                {s.suspicious && (
+                                  <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded-full border border-orange-500/30">
+                                    ⚠️ Suspicious
+                                  </span>
+                                )}
+                                <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${
+                                  s.scanCount === 0
+                                    ? "bg-slate-700 text-slate-400 border-slate-600"
+                                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                }`}>
+                                  {s.scanCount === 0 ? "Not scanned" : `${s.scanCount} scan${s.scanCount > 1 ? "s" : ""}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Scan events */}
+                            {s.scanHistory.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {s.scanHistory.map((ev: any, idx: number) => (
+                                  <div key={idx} className="flex items-center justify-between gap-3 pl-3 border-l-2 border-slate-700 text-xs flex-wrap">
+                                    <div className="flex items-center gap-2 text-slate-400">
+                                      <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                        {idx + 1}
+                                      </span>
+                                      <span>{new Date(ev.scannedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {ev.lat != null && ev.lng != null ? (
+                                        <>
+                                          <span className="text-slate-400 font-mono">
+                                            {ev.cityName
+                                              ? <span className="text-slate-300 not-italic font-semibold">{ev.cityName}</span>
+                                              : `${ev.lat.toFixed(4)}, ${ev.lng.toFixed(4)}`
+                                            }
+                                          </span>
+                                          {ev.cityName && (
+                                            <span className="text-slate-600 font-mono text-[10px]">
+                                              ({ev.lat.toFixed(4)}, {ev.lng.toFixed(4)})
+                                            </span>
+                                          )}
+                                          <a
+                                            href={ev.mapUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded hover:bg-blue-500/20 transition-colors"
+                                          >
+                                            <MapPin className="w-3 h-3" /> View on Map
+                                          </a>
+                                        </>
+                                      ) : (
+                                        <span className="text-slate-600 italic">Location not shared</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-10 text-red-400">Failed to load scan history.</div>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

@@ -29,6 +29,8 @@ interface Product {
   qrCode?: string
   productId?: string
   hash?: string
+  quantity?: number
+  serialsGenerated?: boolean
 }
 
 interface CompanySession {
@@ -66,8 +68,10 @@ export default function CompanyDashboard() {
     productName: "", batchNumber: "", manufacturingDate: "",
     expiryDate: "", composition: "", productType: "",
     netWeight: "", pricePerKg: "", targetCrops: "", storageConditions: "",
+    quantity: "1",
   })
   const [submitting, setSubmitting] = useState(false)
+  const [downloadingZip, setDownloadingZip] = useState<string | null>(null)
 
   useEffect(() => {
     const stored = localStorage.getItem("companySession")
@@ -141,6 +145,7 @@ export default function CompanyDashboard() {
           productName: "", batchNumber: "", manufacturingDate: "",
           expiryDate: "", composition: "", productType: "",
           netWeight: "", pricePerKg: "", targetCrops: "", storageConditions: "",
+          quantity: "1",
         })
         // Refresh products from MongoDB
         await fetchProducts(session?.companyId || "")
@@ -176,22 +181,31 @@ export default function CompanyDashboard() {
     }
   }
 
-  const handleRequestQR = async (productId: string) => {
+  const handleDownloadSerials = async (productMongoId: string, productName: string, quantity?: number) => {
+    setDownloadingZip(productMongoId)
     try {
-      const res = await fetch("/api/products/generate-qr", {
+      const res = await fetch("/api/products/generate-serials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
+        body: JSON.stringify({ productId: productMongoId, quantityOverride: quantity }),
       })
-      const data = await res.json()
-      if (data.success) {
-        await fetchProducts(session?.companyId || "")
-      } else {
-        alert(`Error: ${data.message}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Unknown error" }))
+        alert(`Error: ${err.message}`)
+        return
       }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${productName.replace(/\s+/g, "_")}_QRCodes.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+      await fetchProducts(session?.companyId || "")
     } catch (err) {
-      console.error("Failed to generate QR:", err)
-      alert("Failed to generate QR. Please try again.")
+      alert("Failed to download QR codes. Please try again.")
+    } finally {
+      setDownloadingZip(null)
     }
   }
 
@@ -600,16 +614,32 @@ export default function CompanyDashboard() {
                               </motion.button>
                             )}
 
-                            {/* QR Request Button */}
-                            {product.qrCode ? (
-                              // QR Generated - show image + download
+                            {/* QR / Serials Section */}
+                            {product.serialsGenerated ? (
+                              // ── Serials already generated → download ZIP ──
+                              <div className="flex flex-col items-end gap-2">
+                                <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-lg font-medium">
+                                  ✅ {product.quantity ?? '?'} QR Codes Ready
+                                </span>
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  disabled={downloadingZip === product._id}
+                                  onClick={() => handleDownloadSerials(product._id, product.productName, product.quantity)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-emerald-500/30 transition-all disabled:opacity-60"
+                                >
+                                  {downloadingZip === product._id ? (
+                                    <><span className="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> Building ZIP...</>
+                                  ) : (
+                                    <>⬇️ Download ZIP ({product.quantity ?? '?'} QRs)</>
+                                  )}
+                                </motion.button>
+                              </div>
+                            ) : product.qrCode ? (
+                              // ── Legacy single QR (old products) ──
                               <div className="flex flex-col items-end gap-2">
                                 <div className="bg-white p-2 rounded-lg shadow-lg">
-                                  <img
-                                    src={product.qrCode}
-                                    alt="QR Code"
-                                    className="w-24 h-24 object-contain"
-                                  />
+                                  <img src={product.qrCode} alt="QR Code" className="w-24 h-24 object-contain" />
                                 </div>
                                 <p className="text-xs text-emerald-400 font-medium">{product.productId}</p>
                                 <motion.button
@@ -621,21 +651,12 @@ export default function CompanyDashboard() {
                                   ⬇️ Download QR
                                 </motion.button>
                               </div>
-                            ) : product.qrRequested ? (
-                              <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm font-medium">
-                                <Clock className="w-4 h-4" />
-                                Generating QR...
-                              </div>
                             ) : product.status === "APPROVED" ? (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleRequestQR(product._id)}
-                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-lime-500 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition-all"
-                              >
-                                <QrCode className="w-4 h-4" />
-                                Request QR Generation
-                              </motion.button>
+                              // ── Approved but QRs not yet generated → admin generates them ──
+                              <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm font-medium">
+                                <Clock className="w-4 h-4" />
+                                Awaiting QR Generation
+                              </div>
                             ) : isRejected ? (
                               <div className="flex items-center gap-2 px-4 py-2 bg-red-500/5 border border-red-500/10 rounded-lg text-slate-600 text-sm line-through">
                                 <QrCode className="w-4 h-4" />
@@ -716,6 +737,31 @@ export default function CompanyDashboard() {
                         />
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-yellow-400 mb-3 uppercase tracking-wider">📦 Batch Quantity</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                        Number of Bags / Units in this Batch <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        name="quantity"
+                        value={form.quantity}
+                        onChange={handleChange}
+                        required
+                        min={1}
+                        max={10000}
+                        placeholder="e.g. 500"
+                        className="w-full px-3 py-2.5 bg-slate-800 border border-yellow-500/40 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-yellow-500 transition-colors text-sm"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Each bag will get its own unique QR code for fraud detection. Max 10,000 per batch.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
