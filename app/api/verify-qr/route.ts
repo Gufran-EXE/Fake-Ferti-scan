@@ -40,7 +40,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const body = await req.json()
+    const body = await req.json().catch(() => null)
+    if (!body) {
+      return NextResponse.json(
+        { success: false, genuine: false, message: "Invalid request body" },
+        { status: 400, headers: CORS_HEADERS }
+      )
+    }
     const { qrData, lat, lng } = body
 
     if (!qrData) {

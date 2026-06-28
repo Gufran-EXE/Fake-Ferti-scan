@@ -3,9 +3,17 @@ import 'package:http/http.dart' as http;
 
 /// Central service for all Vercel/MongoDB API calls.
 class ApiService {
-  // ── PRODUCTION: Vercel deployment URL ────────────────────────────────────
+  // ── LOCAL DEV: your Mac's IP on the same WiFi as the phone ─────────────────
+  // ── PRODUCTION: Vercel URL ────────────────────────────────────────────────
   static const String _baseUrl =
-      'https://fake-ferti-scan-ec3l-p10arjgx6-gufran2098-9150s-projects.vercel.app/api';
+      'https://fake-ferti-scan-ec3l.vercel.app/api';
+
+  // ── LOCAL DEV: uncomment when testing locally
+  // static const String _baseUrl = 'http://10.167.149.211:3000/api';
+
+  // ── PRODUCTION: uncomment when Vercel alias is fixed
+  // static const String _baseUrl =
+  //     'https://fake-ferti-scan-ec3l-git-main-gufran2098-9150s-projects.vercel.app/api';
 
   // ── LOCAL DEV: uncomment this and comment out the line above when testing locally
   // Make sure `next dev` is running and phone is on the same WiFi as your Mac.
